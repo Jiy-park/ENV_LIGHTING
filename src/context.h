@@ -65,10 +65,12 @@ private:
     CubeTextureUPtr m_cubeTexture;
     ProgramUPtr m_skyboxProgram;
     ProgramUPtr m_envMapProgram;
+    ProgramUPtr m_envModelProgram;
+
+    float m_env_scale { 1.0f };
 
 
     int m_textureType { 0 };
-
     int m_width{WINDOW_WIDTH};
     int m_height{WINDOW_HEIGHT};
 };

@@ -1,30 +1,11 @@
 #version 330 core
-
-out vec4 fragColor;
-
-in vec3 normal;
-in vec3 position;
-
-uniform vec3 cameraPos;
-uniform samplerCube skybox;
-
-void main() {
-    vec3 I = normalize(position - cameraPos);
-    vec3 R = reflect(I, normalize(normal));
-    fragColor = vec4(texture(skybox, R).rgb, 1.0);
-}
-////////////////////////////////////env_map
-////////////////////////////////////lighting
-#version 330 core
 in vec3 normal;
 in vec2 texCoord;
-in vec3 position;
+in vec3 position; 
 out vec4 fragColor;
- 
-uniform float env_scale;
 
 uniform vec3 viewPos;
-uniform samplerCube skybox;
+uniform float env_scale;
 
 struct Light {
     vec3 position;
@@ -44,10 +25,12 @@ struct Material {
 };
 uniform Material material;
 
-	
+uniform samplerCube skybox;
+
 void main() {
     vec3 texColor = texture2D(material.diffuse, texCoord).xyz;
     vec3 ambient = texColor * light.ambient;
+ 
  	
     float dist = length(light.position - position);
     vec3 distPoly = vec3(1.0, dist, dist*dist);
@@ -58,12 +41,10 @@ void main() {
     float theta = dot(lightDir, normalize(-light.direction));
     float intensity = clamp((theta - light.cutoff[1]) / (light.cutoff[0] - light.cutoff[1]),  0.0, 1.0);
  
-    float snv_scale =0.0;
-
+    vec3 I = normalize(position - viewPos);
+    vec3 R = reflect(I, normalize(normal));
 
     if (intensity>0.0) {
-        vec3 I = normalize(position - viewPos);
-        vec3 R = reflect(I, normalize(normal));
         vec3 pixelNorm = normalize(normal);
         float diff = max(dot(pixelNorm, lightDir), 0.0);
         vec3 diffuse = diff * texColor * light.diffuse;   
@@ -73,7 +54,7 @@ void main() {
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
         vec3 specular = spec * specColor * light.specular;    
         
-        result += ((diffuse + specular) * texture(skybox, R).rgb) * intensity * env_scale;
+        result += (diffuse + specular) * intensity * texture(skybox, R).rgb * env_scale;
     }
 
     result *= attenuation;

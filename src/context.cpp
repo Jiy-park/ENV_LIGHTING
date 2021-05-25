@@ -116,7 +116,7 @@ bool Context::Init(){
     });
     m_skyboxProgram = Program::Create("./shader/skybox.vs", "./shader/skybox.fs");
     m_envMapProgram = Program::Create("./shader/env_map.vs", "./shader/env_map.fs");
-
+    m_envModelProgram = Program::Create("./shader/lighting.vs", "./shader/lighting_env_map.fs");
 
     return true;
 }
@@ -147,8 +147,7 @@ void Context::Render(){
             ImGui::ColorEdit3("l.specular", glm::value_ptr(m_light.specular));
             ImGui::Checkbox("flash light",&m_flashLightMode);
         }
-        // float aspectRatio = (float)m_width / (float)m_width;
-        // ImGui::Image((ImTextureID)m_framebuffer->GetColorAttachment()->Get(),ImVec2(150*aspectRatio, 150));
+
 
         const char *items[] = {"lighting", "env", "env + lighting"};
         static const char *current_item = items[0];
@@ -162,6 +161,8 @@ void Context::Render(){
             }
             ImGui::EndCombo();
         }
+        if (current_item == items[2])
+            ImGui::DragFloat("env_scale", &m_env_scale, 0.1f, 1.0f, 50.0f);
     }
     ImGui::End();
 
@@ -204,6 +205,7 @@ void Context::Render(){
     }
 
     auto modelTransform = glm::mat4(1.0f);
+    auto transform = projection * view * modelTransform;
     switch(m_textureType){
     default:
         m_program->Use();
@@ -216,8 +218,7 @@ void Context::Render(){
         m_program->SetUniform("light.ambient", m_light.ambient);
         m_program->SetUniform("light.diffuse", m_light.diffuse);
         m_program->SetUniform("light.specular", m_light.specular);
-        
-        auto transform = projection * view * modelTransform;
+          
         m_program->SetUniform("transform", transform);
         m_program->SetUniform("modelTransform", modelTransform);
         m_model->Draw(m_program.get());
@@ -228,12 +229,27 @@ void Context::Render(){
         m_envMapProgram->SetUniform("view", view);
         m_envMapProgram->SetUniform("projection", projection);
         m_envMapProgram->SetUniform("cameraPos", m_cameraPos);
-        m_cubeTexture->Bind();
+       //m_cubeTexture->Bind();
         m_envMapProgram->SetUniform("skybox", 0);
         m_model->Draw(m_envMapProgram.get());
         break;
     case 2:
-        
+        m_envModelProgram->Use();
+        m_envModelProgram->SetUniform("viewPos", m_cameraPos);
+        m_envModelProgram->SetUniform("light.position", lightPos);
+        m_envModelProgram->SetUniform("light.direction", lightDir);
+        m_envModelProgram->SetUniform("light.cutoff", glm::vec2(cosf(glm::radians(m_light.cutoff[0])),
+                                                                cosf(glm::radians(m_light.cutoff[0] + m_light.cutoff[1]))));
+        m_envModelProgram->SetUniform("light.attenuation", GetAttenuationCoeff(m_light.distance));
+        m_envModelProgram->SetUniform("light.ambient", m_light.ambient);
+        m_envModelProgram->SetUniform("light.diffuse", m_light.diffuse);
+        m_envModelProgram->SetUniform("light.specular", m_light.specular);
+
+        m_envModelProgram->SetUniform("transform", transform);
+        m_envModelProgram->SetUniform("modelTransform", modelTransform);
+        m_envModelProgram->SetUniform("env_scale", m_env_scale);
+        m_envModelProgram->SetUniform("skybox", 0);
+        m_model->Draw(m_envModelProgram.get());
         break;
     }
 
